@@ -1,0 +1,10 @@
+{
+    "C_Cpp.default.compilerArgs": [
+        "-Wall",
+        "-Wextra",
+        "-o program main.c threads.c"
+    ],
+    "files.associations": {
+        "stdio.h": "c"
+    }
+}
