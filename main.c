@@ -19,8 +19,14 @@ void main(){
     pthread_create(&analizer, NULL, analizer_f, NULL);
     pthread_create(&printer, NULL, printer_f, NULL);
 
-    /* aaa */
-    while(1){
-        sleep(10);
-    };
+    /* waits for user input to close threads and end the program */
+    //printf("Press any key to continue...   \n");
+    //getchar();
+    //close_threads = true;
+    pthread_join(reader, NULL);
+    pthread_join(analizer, NULL);
+    pthread_join(printer, NULL);
+    printf("Program terminated gracefully.\n");
+    sleep(1);
+    exit(0);
 }

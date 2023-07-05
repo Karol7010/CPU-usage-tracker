@@ -89,7 +89,7 @@ void *analizer_f(void *arg){
                 cpu.total_time = cpu.total - (cpu.prev_total);
 
                 /* Actual CPU usage calculation */
-                cpu.cpu_usage = (float)(cpu.total_time - (cpu.prev_idle - cpu.idle_time)) / cpu.total_time * 100;
+                cpu.cpu_usage = (float)(cpu.total_time - (cpu.prev_idle - cpu.idle_time)) / cpu.total_time * 50;
 
                 cpu.prev_idle = cpu.idle_time;
                 cpu.prev_total = cpu.total;
@@ -102,13 +102,24 @@ void *analizer_f(void *arg){
 
 void *printer_f(){
     /*
-    aaa
+    This function prints 'cpu.cpu_usage'
     */
     while(!close_threads){
         check_if_my_turn(2);
 
-        printf("CPU Usage: %.2f%%\n", cpu.cpu_usage);
-        sleep(1);
+        printf("CPU Usage: [");
+
+        for (int i = 0; i < 100; i += 10) { //bar display
+            if (i < cpu.cpu_usage) {
+                printf("#");
+            } else {
+                printf(" ");
+            }
+        }
+        printf("] %.2f%%\r", cpu.cpu_usage);
+        fflush(stdout);
+
+        sleep(1); //refresh after 1 second
 
         currentThread = 0;
     };
