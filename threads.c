@@ -14,12 +14,12 @@ int currentThread = 0; //0-reader ; 1-analizer ; 2-printer
 bool close_threads = false;
 char *raw_data;
 
-// struct CPU {
-//     int core_count;
-//     long cpu[];
-//     long cpu_cores[core_count][];
-//     long intr[];
-// };
+struct CPU {
+    unsigned long long user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice;
+    unsigned long long total, idle_time, total_time, prev_idle, prev_total;
+    float cpu_usage;
+};
+struct CPU cpu;
 
 bool check_if_my_turn(int threadId){
     /* Pauses thread */
@@ -31,12 +31,11 @@ bool check_if_my_turn(int threadId){
 
 void *reader_f(){
     /*
-    This function peaks into a file that contains CPU usage 
-    information and passes it to a global variable.
+    This function peaks into a file /proc/stat that contains CPU usage 
+    information and passes it to a global variable 'raw_data'.
     */
     while(!close_threads){
         check_if_my_turn(0);
-        printf("Entering reader\n");
         FILE *file = fopen("stat", "r"); //change to /proc/stat
         fseek(file, 0, SEEK_END); //determine length for buffer char array
         long fileSize = ftell(file);
@@ -52,11 +51,13 @@ void *reader_f(){
 
 void *analizer_f(void *arg){
     /*
-    _Percentage = (totald - idled)/totald
+    This function processes the raw_data, saves the int values to CPU struct,
+    than calculates the CPU usage based on the idle and total time. 
     */
+    cpu.prev_idle = 0; 
+    cpu.prev_total = 0;
     while(!close_threads){
         check_if_my_turn(1);
-        printf("Entering analizer\n");
 
         /* Split the raw data to a 2D matrix (split by new line) */
         char matrix[24][2048];
@@ -74,6 +75,26 @@ void *analizer_f(void *arg){
                 col++;
             }
         }
+
+        /* Find  'cpu ' line,  change char to int values and calculate the CPU usage */
+        row = sizeof(matrix) / sizeof(matrix[0]);
+        col = sizeof(matrix[0]) / sizeof(matrix[0][0]);
+        for (int i = 0; i < row; i++) {
+            if (strncmp(matrix[i], "cpu ", 4) == 0) { //extract int values from line starting with 'cpu '
+                sscanf(matrix[i], "cpu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
+                &cpu.user, &cpu.nice, &cpu.system, &cpu.idle, &cpu.iowait, &cpu.irq,
+                &cpu.softirq, &cpu.steal, &cpu.guest, &cpu.guest_nice);
+                cpu.total = cpu.user + cpu.nice + cpu.system + cpu.idle + cpu.iowait + cpu.irq + cpu.softirq + cpu.steal;
+                cpu.idle_time = cpu.idle + cpu.iowait;
+                cpu.total_time = cpu.total - (cpu.prev_total);
+
+                /* Actual CPU usage calculation */
+                cpu.cpu_usage = (float)(cpu.total_time - (cpu.prev_idle - cpu.idle_time)) / cpu.total_time * 100;
+
+                cpu.prev_idle = cpu.idle_time;
+                cpu.prev_total = cpu.total;
+            }
+        }
         currentThread++;
     };
     pthread_exit(NULL);
@@ -85,11 +106,11 @@ void *printer_f(){
     */
     while(!close_threads){
         check_if_my_turn(2);
-        printf("Entering printer\n");
 
-        //printf("%s\n", raw_data);
+        printf("CPU Usage: %.2f%%\n", cpu.cpu_usage);
+        sleep(1);
 
-        currentThread++;
+        currentThread = 0;
     };
     pthread_exit(NULL);
 }
