@@ -36,7 +36,7 @@ void *reader_f(){
     */
     while(!close_threads){
         check_if_my_turn(0);
-        FILE *file = fopen("stat", "r"); //change to /proc/stat
+        FILE *file = fopen("/proc/stat", "r"); //change to /proc/stat
         fseek(file, 0, SEEK_END); //determine length for buffer char array
         long fileSize = ftell(file);
         fseek(file, 0, SEEK_SET);
