@@ -1,6 +1,7 @@
 /* This library contains the thread's functions
     and their synchronization instructions. */
 
+#include "threads.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "stdbool.h"
@@ -21,27 +22,28 @@ struct CPU {
 };
 struct CPU cpu;
 
-bool check_if_my_turn(int threadId){
+int check_if_my_turn(int threadId){
     /* Pauses thread */
     while (currentThread != threadId) { 
-            pthread_mutex_unlock(&mutex);
             pthread_mutex_lock(&mutex);
+            pthread_mutex_unlock(&mutex);
     };
 }
 
-void *reader_f(){
+void reader_f(){
     /*
     This function peaks into a file /proc/stat that contains CPU usage 
     information and passes it to a global variable 'raw_data'.
     */
     while(!close_threads){
         check_if_my_turn(0);
-        FILE *file = fopen("/proc/stat", "r"); //change to /proc/stat
-        fseek(file, 0, SEEK_END); //determine length for buffer char array
-        long fileSize = ftell(file);
-        fseek(file, 0, SEEK_SET);
-        char *buffer = (char*)malloc(fileSize * sizeof(char));
-        fread(buffer, sizeof(char), fileSize, file); //reding stat file to buffer
+        FILE *file = fopen("/proc/stat", "r");
+        if (file == NULL) {
+            printf("Failed to open /proc/stat.\n");
+            system("pause");
+        }
+        char buffer[100];
+        fgets(buffer, sizeof(buffer), file); //reading only first line of stat file
         fclose(file);
         raw_data = buffer; //Sending current read to a global variable
         currentThread++;
@@ -49,7 +51,7 @@ void *reader_f(){
     pthread_exit(NULL);
 }
 
-void *analizer_f(void *arg){
+void analizer_f(){
     /*
     This function processes the raw_data, saves the int values to CPU struct,
     than calculates the CPU usage based on the idle and total time. 
@@ -100,25 +102,24 @@ void *analizer_f(void *arg){
     pthread_exit(NULL);
 }
 
-void *printer_f(){
+void printer_f(){
     /*
-    This function prints 'cpu.cpu_usage'
+    This function prints 'cpu.cpu_usage' in a nice way
     */
+    printf("Press ENTER to exit...\n");
     while(!close_threads){
         check_if_my_turn(2);
 
         printf("CPU Usage: [");
-
         for (int i = 0; i < 100; i += 10) { //bar display
             if (i < cpu.cpu_usage) {
-                printf("#");
+                printf("=");
             } else {
                 printf(" ");
             }
         }
         printf("] %.2f%%\r", cpu.cpu_usage);
         fflush(stdout);
-
         sleep(1); //refresh after 1 second
 
         currentThread = 0;
