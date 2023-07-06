@@ -8,5 +8,7 @@ int check_if_my_turn(int threadId);
 void reader_f();
 void analizer_f();
 void printer_f();
+void logger_f();
+void watchdog_f();
 
 #endif

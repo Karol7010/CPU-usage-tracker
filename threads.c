@@ -8,12 +8,14 @@
 #include "unistd.h"
 #include "pthread.h"
 #include "string.h"
+#include "time.h"
 
 /* Mutex and variables used for thread synchronization */
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 int currentThread = 0; //0-reader ; 1-analizer ; 2-printer
 bool close_threads = false;
 char *raw_data;
+struct tm *localTime;
 
 struct CPU {
     unsigned long long user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice;
@@ -120,9 +122,40 @@ void printer_f(){
         }
         printf("] %.2f%%\r", cpu.cpu_usage);
         fflush(stdout);
-        sleep(1); //refresh after 1 second
+        sleep(1); //refresh after 0.5 second
 
         currentThread = 0;
     };
+    pthread_exit(NULL);
+}
+
+void logger_f(){
+    /*
+    Logs current time and CPU usage into txt file
+    */
+    sleep(1);
+    FILE *file = fopen("log_data", "w");
+    if (file == NULL) {
+        printf("Failed to create the logger file.\n");
+        pthread_exit(NULL);
+    }
+    while(!close_threads){
+        time_t currentTime;
+        localTime = localtime(&currentTime);
+        char timeString[100];
+        strftime(timeString, sizeof(timeString), "%c", localTime);
+        fprintf(file, "Time: %s ; CPU: %.2f%%\r\n", timeString, cpu.cpu_usage);
+        sleep(1);
+    }
+    pthread_exit(NULL);
+}
+
+void watchdog_f(){
+    /*
+    aaa
+    */
+    while(!close_threads){
+        sleep(2);
+    }
     pthread_exit(NULL);
 }
