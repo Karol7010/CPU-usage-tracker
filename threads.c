@@ -1,4 +1,4 @@
-/* This library contains the thread's functions
+/* This library contains threads functions
     and their synchronization instructions. */
 
 #include "threads.h"
@@ -16,7 +16,10 @@ int currentThread = 0; //0-reader ; 1-analizer ; 2-printer
 bool close_threads = false;
 char *raw_data;
 struct tm *localTime;
+time_t currentTime;
+char timeString[50];
 
+/* struct for keeping numerical values read from the stat file */
 struct CPU {
     unsigned long long user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice;
     unsigned long long total, idle_time, total_time, prev_idle, prev_total;
@@ -25,7 +28,7 @@ struct CPU {
 struct CPU cpu;
 
 int check_if_my_turn(int threadId){
-    /* Pauses thread */
+    /* Pauses thread until ok to run */
     while (currentThread != threadId) { 
             pthread_mutex_lock(&mutex);
             pthread_mutex_unlock(&mutex);
@@ -111,7 +114,6 @@ void printer_f(){
     printf("Press ENTER to exit...\n");
     while(!close_threads){
         check_if_my_turn(2);
-
         printf("CPU Usage: [");
         for (int i = 0; i < 100; i += 10) { //bar display
             if (i < cpu.cpu_usage) {
@@ -122,40 +124,48 @@ void printer_f(){
         }
         printf("] %.2f%%\r", cpu.cpu_usage);
         fflush(stdout);
-        sleep(1); //refresh after 0.5 second
-
-        currentThread = 0;
+        sleep(1); //refresh after a second
+        currentThread++;
     };
     pthread_exit(NULL);
 }
 
 void logger_f(){
     /*
-    Logs current time and CPU usage into txt file
+    Logs current time and CPU usage into a file (log_data.txt)
     */
-    sleep(1);
+    check_if_my_turn(3);
     FILE *file = fopen("log_data", "w");
     if (file == NULL) {
         printf("Failed to create the logger file.\n");
         pthread_exit(NULL);
     }
     while(!close_threads){
-        time_t currentTime;
+        check_if_my_turn(3);
         localTime = localtime(&currentTime);
-        char timeString[100];
+        currentTime = time(NULL);
         strftime(timeString, sizeof(timeString), "%c", localTime);
         fprintf(file, "Time: %s ; CPU: %.2f%%\r\n", timeString, cpu.cpu_usage);
-        sleep(1);
+        currentThread = 0;
     }
+    fclose(file);
     pthread_exit(NULL);
 }
 
 void watchdog_f(){
     /*
-    aaa
+    Checks if time variable is updated every 2 seconds, if not
+    the program is terminated.
     */
     while(!close_threads){
+        time_t time_1 = currentTime;
         sleep(2);
+        time_t time_2 = currentTime;
+        if (time_1 == time_2){
+            printf("\nThe program is stuck.\n");
+            sleep(0.5);
+            exit(0);
+        }
     }
     pthread_exit(NULL);
 }
